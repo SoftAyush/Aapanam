@@ -1,0 +1,33 @@
+CREATE TABLE customer (
+    id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    phone TEXT,
+    address TEXT,
+    created_at INTEGER NOT NULL
+);
+
+-- Indexes
+CREATE UNIQUE INDEX idx_customer_name_phone ON customer(name, phone);
+
+-- Queries
+insertCustomer:
+INSERT OR IGNORE INTO customer (name, phone, address, created_at)
+VALUES (?, ?, ?, ?);
+
+getCustomerById:
+SELECT * FROM customer
+WHERE id = ?;
+
+getCustomerByNameAndPhone:
+SELECT * FROM customer
+WHERE name = ? AND phone = ?;
+
+getAllCustomers:
+SELECT * FROM customer
+ORDER BY name;
+
+last_insert_rowid:
+SELECT last_insert_rowid();
+
+deleteAllCustomers:
+DELETE FROM customer;

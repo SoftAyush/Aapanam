@@ -1,0 +1,73 @@
+CREATE TABLE item (
+    id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    category TEXT,
+    quantity INTEGER NOT NULL DEFAULT 0,
+    cost_price REAL NOT NULL DEFAULT 0.0,
+    selling_price REAL NOT NULL DEFAULT 0.0,
+    image_url TEXT,
+    created_at INTEGER NOT NULL,
+    last_modified INTEGER NOT NULL,
+    is_synced INTEGER NOT NULL DEFAULT 0
+);
+
+-- Indexes for better performance
+CREATE INDEX idx_item_name ON item(name);
+CREATE INDEX idx_item_category ON item(category);
+CREATE INDEX idx_item_sync ON item(is_synced);
+
+-- Queries
+getAllItems:
+SELECT * FROM item;
+
+getItemById:
+SELECT * FROM item
+WHERE id = ?;
+
+searchItemsByName:
+SELECT * FROM item
+WHERE name LIKE '%' || ? || '%';
+
+getLowStockItems:
+SELECT * FROM item
+WHERE quantity <= ?;
+
+getUnsyncedItems:
+SELECT * FROM item
+WHERE is_synced = 0;
+
+insertItem:
+INSERT INTO item (name, category, quantity, cost_price, selling_price, image_url, created_at, last_modified, is_synced)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+upsertItem:
+INSERT OR REPLACE INTO item (id, name, category, quantity, cost_price, selling_price, image_url, created_at, last_modified, is_synced)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+updateItem:
+UPDATE item
+SET name = ?,
+    category = ?,
+    quantity = ?,
+    cost_price = ?,
+    selling_price = ?,
+    image_url = ?,
+    last_modified = ?,
+    is_synced = ?
+WHERE id = ?;
+
+updateStockQuantity:
+UPDATE item
+SET quantity = ?,
+    last_modified = ?
+WHERE id = ?;
+
+deleteItemById:
+DELETE FROM item
+WHERE id = ?;
+
+markAllItemsAsSynced:
+UPDATE item
+SET is_synced = 1,
+    last_modified = ?; deleteAllItems:
+DELETE FROM item;
