@@ -5,12 +5,14 @@ CREATE TABLE credit_payment (
     payment_date INTEGER NOT NULL,
     notes TEXT,
     created_at INTEGER NOT NULL,
+    is_synced INTEGER NOT NULL DEFAULT 0,
     FOREIGN KEY(customer_id) REFERENCES customer(id) ON DELETE CASCADE
 );
 
 -- Indexes for better performance
 CREATE INDEX idx_credit_payment_customer_id ON credit_payment(customer_id);
 CREATE INDEX idx_credit_payment_payment_date ON credit_payment(payment_date);
+CREATE INDEX idx_credit_payment_sync ON credit_payment(is_synced);
 
 -- Credit Payment Queries
 insertCreditPayment:
@@ -31,6 +33,12 @@ ORDER BY payment_date DESC;
 getAllCreditPayments:
 SELECT * FROM credit_payment
 ORDER BY payment_date DESC;
+
+getUnsyncedCreditPayments:
+SELECT * FROM credit_payment WHERE is_synced = 0;
+
+updateCreditPaymentSyncStatus:
+UPDATE credit_payment SET is_synced = ? WHERE id = ?;
 
 deleteCreditPaymentById:
 DELETE FROM credit_payment

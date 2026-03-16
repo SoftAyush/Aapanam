@@ -3,11 +3,13 @@ CREATE TABLE customer (
     name TEXT NOT NULL,
     phone TEXT,
     address TEXT,
-    created_at INTEGER NOT NULL
+    created_at INTEGER NOT NULL,
+    is_synced INTEGER NOT NULL DEFAULT 0
 );
 
 -- Indexes
 CREATE UNIQUE INDEX idx_customer_name_phone ON customer(name, phone);
+CREATE INDEX idx_customer_sync ON customer(is_synced);
 
 -- Queries
 insertCustomer:
@@ -25,6 +27,12 @@ WHERE name = ? AND phone = ?;
 getAllCustomers:
 SELECT * FROM customer
 ORDER BY name;
+
+getUnsyncedCustomers:
+SELECT * FROM customer WHERE is_synced = 0;
+
+updateCustomerSyncStatus:
+UPDATE customer SET is_synced = ? WHERE id = ?;
 
 last_insert_rowid:
 SELECT last_insert_rowid();

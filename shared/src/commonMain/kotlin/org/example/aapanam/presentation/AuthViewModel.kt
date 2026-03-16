@@ -8,6 +8,7 @@ import kotlinx.coroutines.launch
 import org.example.aapanam.data.local.Database
 import org.example.aapanam.data.remote.FirebaseService
 import org.example.aapanam.repository.Repository
+import org.example.aapanam.util.Logger
 
 class AuthViewModel(private val firebaseService: FirebaseService, private val database: Database, private val repository: Repository) : ViewModel() {
 
@@ -53,8 +54,12 @@ class AuthViewModel(private val firebaseService: FirebaseService, private val da
 
     private fun sync() {
         coroutineScope.launch {
-            repository.syncAllUnsynced()
-            repository.pull()
+            try {
+                repository.syncAllUnsynced()
+                repository.pull()
+            } catch (e: Exception) {
+                Logger.e("Startup sync failed: ${e.message}", e)
+            }
         }
     }
 }

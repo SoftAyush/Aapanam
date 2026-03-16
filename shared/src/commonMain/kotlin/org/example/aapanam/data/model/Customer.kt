@@ -10,5 +10,6 @@ data class Customer(
     val name: String,
     val phone: String?,
     val address: String?,
-    val createdAt: Instant = Clock.System.now()
+    val createdAt: Instant = Clock.System.now(),
+    val isSynced: Boolean = false
 )

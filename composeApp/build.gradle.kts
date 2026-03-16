@@ -1,5 +1,5 @@
-import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import java.util.Properties
 
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
@@ -22,6 +22,7 @@ kotlin {
 
     sourceSets {
         androidMain.dependencies {
+            implementation(project.dependencies.platform(libs.firebase.bom))
             implementation(compose.preview)
             implementation(libs.androidx.activity.compose)
             implementation(libs.koin.android)
@@ -58,8 +59,8 @@ android {
         applicationId = "org.example.aapanam"
         minSdk = libs.versions.android.minSdk.get().toInt()
         targetSdk = libs.versions.android.targetSdk.get().toInt()
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 2
+        versionName = "1.0.1"
     }
     packaging {
         resources {
@@ -67,8 +68,24 @@ android {
         }
     }
     buildTypes {
+        val keystoreProperties = Properties()
+        val keystorePropertiesFile = project.rootProject.file("local.properties")
+        if (keystorePropertiesFile.exists()) {
+            keystoreProperties.load(keystorePropertiesFile.inputStream())
+        }
+
+        signingConfigs {
+            create("release") {
+                storeFile = file("Aapanam-release-key.jks")
+                storePassword = keystoreProperties.getProperty("signing.release.storePassword")
+                keyAlias = keystoreProperties.getProperty("signing.release.keyAlias")
+                keyPassword = keystoreProperties.getProperty("signing.release.keyPassword")
+            }
+        }
+
         getByName("release") {
             isMinifyEnabled = false
+            signingConfig = signingConfigs.getByName("release")
         }
     }
     compileOptions {

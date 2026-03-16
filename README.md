@@ -65,7 +65,7 @@ To get a local copy up and running, follow these steps.
 1.  **Clone the repository:**
 
     ```bash
-    git clone https://github.com/your-username/Aapanam.git
+    git clone https://github.com/SoftAyush/Aapanam.git
     cd Aapanam
     ```
 
@@ -93,5 +93,5 @@ Distributed under the MIT License. See `LICENSE` for more information.
 
 ## 📞 Contact
 
-Your Name/Organization - [your-email@example.com](mailto:your-email@example.com)
-Project Link: [https://github.com/your-username/Aapanam](https://github.com/your-username/Aapanam)
+Website - [https://ayushtimalsina.com.np](Ayush Timalsina Website )
+Project Link: [https://github.com/SoftAyush/Aapanam](https://github.com/SoftAyush/Aapanam)

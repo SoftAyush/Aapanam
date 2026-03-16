@@ -118,6 +118,12 @@ class Database(
         return customerQueries.last_insert_rowid().executeAsOne()
     }
 
+    fun getUnsyncedCustomers(): List<Customer> = customerQueries.getUnsyncedCustomers().executeAsList().map { it.toModel() }
+
+    fun updateCustomerSyncStatus(isSynced: Boolean, id: Long) {
+        customerQueries.updateCustomerSyncStatus(if (isSynced) 1L else 0L, id)
+    }
+
     // --- Sale Functions ---
     fun getSaleById(id: Long): Sale? = saleQueries.getSaleById(id).executeAsOneOrNull()
         ?.toModel(saleQueries.getSaleItemsBySaleId(id).executeAsList().map { it.toModel() })
@@ -236,6 +242,12 @@ class Database(
         )
     }
 
+    fun getUnsyncedCreditPayments(): List<CreditPayment> = creditPaymentQueries.getUnsyncedCreditPayments().executeAsList().map { it.toModel() }
+
+    fun updateCreditPaymentSyncStatus(isSynced: Boolean, id: Long) {
+        creditPaymentQueries.updateCreditPaymentSyncStatus(if (isSynced) 1L else 0L, id)
+    }
+
     fun deleteSaleById(id: Long) {
         saleQueries.deleteSaleById(id)
     }
@@ -304,7 +316,8 @@ fun org.example.aapanam.db.Credit_payment.toModel(): CreditPayment = CreditPayme
     paid_amount,
     Instant.fromEpochMilliseconds(payment_date),
     notes,
-    Instant.fromEpochMilliseconds(created_at)
+    Instant.fromEpochMilliseconds(created_at),
+    is_synced != 0L
 )
 
 fun DbCustomer.toModel(): Customer = Customer(
@@ -312,5 +325,6 @@ fun DbCustomer.toModel(): Customer = Customer(
     name,
     phone,
     address,
-    Instant.fromEpochMilliseconds(created_at)
+    Instant.fromEpochMilliseconds(created_at),
+    is_synced != 0L
 )

@@ -13,17 +13,50 @@ class CreditViewModel(private val database: Database) : ViewModel() {
     private val _creditSales = MutableStateFlow<List<Sale>>(emptyList())
     val creditSales = _creditSales.asStateFlow()
 
-    init {
-        coroutineScope.launch {
-            database.getCreditSales().collect { sales ->
-                val salesWithCustomers = sales.map { sale ->
-                    val customer = sale.customerId?.let { database.getCustomerById(it) }
-                    sale.copy(customer = customer)
-                }
-                _creditSales.update { salesWithCustomers }
+//    init {
+//        coroutineScope.launch {
+//            database.getCreditSales().collect { sales ->
+//                val salesWithCustomers = sales.map { sale ->
+//                    val customer = sale.customerId?.let { database.getCustomerById(it) }
+//                    sale.copy(customer = customer)
+//                }
+//                _creditSales.update { salesWithCustomers }
+//            }
+//        }
+//    }
+init {
+    coroutineScope.launch {
+        database.getCreditSales().collect { sales ->
+
+            // Attach customer object
+            val salesWithCustomers = sales.map { sale ->
+                val customer = sale.customerId?.let { database.getCustomerById(it) }
+                sale.copy(customer = customer)
             }
+
+            // Merge sales by same customer
+            val mergedSales = salesWithCustomers
+                .groupBy { it.customerId }
+                .map { (_, saleList) ->
+
+                    // Sum totals for that customer
+                    val totalAmount = saleList.sumOf { it.totalAmount }
+                    val paidAmount = saleList.sumOf { it.paidAmount }
+
+                    // Take first sale and replace amounts
+                    val baseSale = saleList.first()
+
+                    baseSale.copy(
+                        totalAmount = totalAmount,
+                        paidAmount = paidAmount
+                    )
+                }
+
+            _creditSales.update { mergedSales }
         }
     }
+}
+
 
 
 

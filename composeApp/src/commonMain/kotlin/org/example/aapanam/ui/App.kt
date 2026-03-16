@@ -47,6 +47,7 @@ import org.example.aapanam.repository.Repository
 import org.example.aapanam.ui.Sale.AddSaleScreen
 import org.example.aapanam.ui.sale.SaleDetailScreen
 import org.example.aapanam.ui.sale.SalesScreen
+import org.example.aapanam.util.Logger
 import org.koin.compose.koinInject
 import org.koin.androidx.compose.koinViewModel
 
@@ -103,8 +104,12 @@ fun MainAppContent(authViewModel: AuthViewModel) {
 
     LaunchedEffect(Unit) {
         while (true) {
-            repository.syncAllUnsynced()
-            repository.pull()
+            try {
+                repository.syncAllUnsynced()
+                repository.pull()
+            } catch (e: Exception) {
+                Logger.e("Background sync failed: ${e.message}", e)
+            }
             delay(5 * 60 * 1000) // 5 minutes
         }
     }

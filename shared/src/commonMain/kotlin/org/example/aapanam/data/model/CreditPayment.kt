@@ -1,5 +1,6 @@
 package org.example.aapanam.data.model
 
+import kotlin.time.Clock
 import kotlin.time.Instant
 
 data class CreditPayment(
@@ -8,5 +9,6 @@ data class CreditPayment(
     val paidAmount: Double,
     val paymentDate: Instant,
     val notes: String?,
-    val createdAt: Instant
+    val createdAt: Instant = Clock.System.now(),
+    val isSynced: Boolean = false
 )

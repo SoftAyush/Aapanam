@@ -5,6 +5,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import org.example.aapanam.data.local.Database
 import org.example.aapanam.data.model.CreditPayment
 import org.example.aapanam.data.model.Customer
@@ -13,6 +15,7 @@ import org.example.aapanam.data.model.Sale
 import org.example.aapanam.data.model.SalesSummary
 import org.example.aapanam.data.remote.FirebaseService
 import org.example.aapanam.util.ConnectivityManager
+import org.example.aapanam.util.Logger
 import kotlin.time.Clock
 
 class Repository(
@@ -24,6 +27,8 @@ class Repository(
 
     private val userId: String?
         get() = firebaseService.getCurrentUser()?.uid
+
+    private val syncMutex = Mutex()
 
     // --------------------- Item Functions ---------------------
     fun getAllItems(): Flow<List<Item>> = database.getAllItems()
@@ -72,8 +77,6 @@ class Repository(
             sales.mapNotNull { it.customer?.name }.distinct()
         }
 
-    // Removed: fun getLatestSaleByCustomer(name: String): Flow<Sale?> = database.getLatestSaleByCustomer(name)
-
     fun insertSaleAndUpdateStock(sale: Sale) {
         val newSale = database.insertSaleWithItems(
             sale.copy(createdAt = Clock.System.now())
@@ -99,21 +102,30 @@ class Repository(
 
         database.updateSalePayment(sale.id, newPaidAmount, isCredit)
 
-        database.insertCreditPayment(
-            CreditPayment(
-                id = 0,
-                customerId = sale.customerId!!, // Changed from saleId = sale.id to customerId = sale.customerId
-                paidAmount = amount,
-                paymentDate = Clock.System.now(),
-                notes = "Paid by user",
-                createdAt = Clock.System.now()
-            )
+        val creditPayment = CreditPayment(
+            id = 0,
+            customerId = sale.customerId!!,
+            paidAmount = amount,
+            paymentDate = Clock.System.now(),
+            notes = "Paid by user",
+            createdAt = Clock.System.now()
         )
+        database.insertCreditPayment(creditPayment)
+        coroutineScope.launch {
+            syncCreditPayment(creditPayment)
+        }
     }
 
     // --------------------- Customer Functions ---------------------
     fun getAllCustomers(): Flow<List<Customer>> = database.getAllCustomers()
-    suspend fun insertCustomer(customer: Customer): Long = database.insertCustomer(customer)
+
+    suspend fun insertCustomer(customer: Customer): Long {
+        val newCustomerId = database.insertCustomer(customer)
+        coroutineScope.launch {
+            syncCustomer(newCustomerId)
+        }
+        return newCustomerId
+    }
     fun getLatestSaleByCustomerId(customerId: Long): Flow<Sale?> =
         database.getLatestSaleByCustomerId(customerId)
 
@@ -129,7 +141,7 @@ class Repository(
                 }
             }
         } catch (e: Exception) {
-            println("Sync failed for item $itemId: ${e.message}")
+            Logger.e("Sync failed for item $itemId: ${e.message}", e)
         }
     }
 
@@ -148,15 +160,77 @@ class Repository(
                 }
             }
         } catch (e: Exception) {
-            println("Sync failed for sale $saleId: ${e.message}")
+            Logger.e("Sync failed for sale $saleId: ${e.message}", e)
+        }
+    }
+
+    private suspend fun syncCustomer(customerId: Long) {
+        if (!connectivityManager.isNetworkAvailable()) return
+
+        try {
+            userId?.let { user ->
+                database.getCustomerById(customerId)?.let { customer ->
+                    firebaseService.addCustomer(user, customer)
+                    database.updateCustomerSyncStatus(true, customerId)
+                }
+            }
+        } catch (e: Exception) {
+            Logger.e("Sync failed for customer $customerId: ${e.message}", e)
+        }
+    }
+
+    private suspend fun syncCreditPayment(payment: CreditPayment) {
+        if (!connectivityManager.isNetworkAvailable()) return
+
+        try {
+            userId?.let { user ->
+                firebaseService.addCreditPayment(user, payment)
+                database.updateCreditPaymentSyncStatus(true, payment.id)
+            }
+        } catch (e: Exception) {
+            Logger.e("Sync failed for credit payment ${payment.id}: ${e.message}", e)
         }
     }
 
     suspend fun syncAllUnsynced() {
-        if (connectivityManager.isNetworkAvailable()) {
-            userId?.let {
-                database.getUnsyncedItems().forEach { syncItem(it.id) }
-                database.getUnsyncedSales().forEach { syncSale(it.id) }
+        if (!connectivityManager.isNetworkAvailable()) return
+        
+        syncMutex.withLock {
+            val user = userId ?: return@withLock
+            Logger.d("Starting batch sync for all unsynced data")
+
+            try {
+                // Batch sync Items
+                val unsyncedItems = database.getUnsyncedItems()
+                if (unsyncedItems.isNotEmpty()) {
+                    firebaseService.addItems(user, unsyncedItems)
+                    unsyncedItems.forEach { database.updateItem(it.copy(isSynced = true)) }
+                }
+
+                // Batch sync Customers
+                val unsyncedCustomers = database.getUnsyncedCustomers()
+                if (unsyncedCustomers.isNotEmpty()) {
+                    firebaseService.addCustomers(user, unsyncedCustomers)
+                    unsyncedCustomers.forEach { database.updateCustomerSyncStatus(true, it.id) }
+                }
+
+                // Batch sync Sales
+                val unsyncedSales = database.getUnsyncedSales()
+                if (unsyncedSales.isNotEmpty()) {
+                    firebaseService.addSales(user, unsyncedSales)
+                    unsyncedSales.forEach { database.updateSaleSyncStatus(true, it.id) }
+                }
+
+                // Batch sync Credit Payments
+                val unsyncedPayments = database.getUnsyncedCreditPayments()
+                if (unsyncedPayments.isNotEmpty()) {
+                    firebaseService.addCreditPayments(user, unsyncedPayments)
+                    unsyncedPayments.forEach { database.updateCreditPaymentSyncStatus(true, it.id) }
+                }
+                
+                Logger.d("Batch sync completed successfully")
+            } catch (e: Exception) {
+                Logger.e("Batch sync failed: ${e.message}", e)
             }
         }
     }
@@ -164,23 +238,33 @@ class Repository(
     suspend fun pull() {
         if (!connectivityManager.isNetworkAvailable()) return
 
-        userId?.let { user ->
+        syncMutex.withLock {
+            val user = userId ?: return@withLock
+            Logger.d("Pulling data from Firestore")
 
-            // Pull Items
-            firebaseService.getItems(user).forEach { remoteItem ->
-                val localItem = database.getItemById(remoteItem.id)
-                if (localItem == null || remoteItem.lastModified > localItem.lastModified) {
-                    database.upsertItem(remoteItem)
+            try {
+                // Pull Items
+                val remoteItems = firebaseService.getItems(user)
+                remoteItems.forEach { remoteItem ->
+                    val localItem = database.getItemById(remoteItem.id)
+                    if (localItem == null || remoteItem.lastModified > localItem.lastModified) {
+                        database.upsertItem(remoteItem.copy(isSynced = true))
+                    }
                 }
-            }
 
-            // Pull Sales
-            firebaseService.getSales(user).forEach { remoteSale ->
-                val localSale = database.getSaleById(remoteSale.id)
-                if (localSale == null || remoteSale.createdAt > localSale.createdAt) {
-                    database.upsertSaleWithItems(remoteSale)
+                // Pull Sales
+                val remoteSales = firebaseService.getSales(user)
+                remoteSales.forEach { remoteSale ->
+                    val localSale = database.getSaleById(remoteSale.id)
+                    if (localSale == null || remoteSale.createdAt > localSale.createdAt) {
+                        database.upsertSaleWithItems(remoteSale.copy(isSynced = true))
+                    }
                 }
+                
+                Logger.d("Pull completed successfully")
+            } catch (e: Exception) {
+                Logger.e("Pull failed: ${e.message}", e)
             }
         }
     }
-}
+}
