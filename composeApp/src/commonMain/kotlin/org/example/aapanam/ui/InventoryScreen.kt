@@ -8,6 +8,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.calculateEndPadding
+import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -47,6 +49,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
@@ -338,8 +341,14 @@ fun InventoryScreen(
             } else {
                 LazyColumn(
                     modifier = Modifier
-                        .padding(paddingValues)
-                        .padding(16.dp),
+//                        .padding(paddingValues)
+//                        .padding(16.dp),
+                        .padding(
+                            start = paddingValues.calculateStartPadding(LayoutDirection.Ltr),
+                            top = paddingValues.calculateTopPadding(),
+                            end = paddingValues.calculateEndPadding(LayoutDirection.Ltr),
+                            bottom = 0.dp
+                        ),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     items(filteredItems, key = { item -> item.id }) { item ->

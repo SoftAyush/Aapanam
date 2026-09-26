@@ -3,8 +3,10 @@ package org.example.aapanam.ui
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
@@ -153,7 +155,6 @@ fun MainAppContent(authViewModel: AuthViewModel) {
 
         else -> {
             Scaffold(
-
                 bottomBar = {
                     AppBottomNavigation(
                         currentScreen = currentScreen,

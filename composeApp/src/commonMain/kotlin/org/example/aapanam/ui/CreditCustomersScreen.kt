@@ -26,6 +26,7 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import formatDate
@@ -159,8 +160,14 @@ fun CreditCustomersScreen(
             } else {
                 LazyColumn(
                     modifier = Modifier
-                        .padding(paddingValues)
-                        .padding(16.dp),
+//                        .padding(paddingValues)
+//                        .padding(16.dp),
+                        .padding(
+                            start = paddingValues.calculateStartPadding(LayoutDirection.Ltr),
+                            top = paddingValues.calculateTopPadding(),
+                            end = paddingValues.calculateEndPadding(LayoutDirection.Ltr),
+                            bottom = 0.dp
+                        ),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     items(creditSales, key = { it.id }) { sale ->
